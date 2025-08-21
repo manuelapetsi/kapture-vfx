@@ -10,6 +10,33 @@
 
 Invisible cloak for your webcam. Pick a color, make it vanish. Powered by OpenCV (CV), FastAPI (backend), and a zero-build modern UI.
 
+### Project structure
+```text
+kapture-vfx/
+├─ app/
+│  ├─ __init__.py
+│  ├─ main.py                 # FastAPI entry (routes + static)
+│  ├─ ws.py                   # WebSocket frame handling
+│  ├─ cv/
+│  │  ├─ __init__.py
+│  │  └─ invisibility.py      # Mask building + cloaking
+│  └─ services/
+│     ├─ __init__.py
+│     └─ processor.py         # Base64 encode/decode, color + params
+├─ public/
+│  └─ index.html              # Tailwind + Vue UI (CDN)
+├─ run.sh                     # Dev server launcher
+├─ requirements.txt
+├─ README.md
+└─ LICENSE
+```
+
+### Tech stack
+- Backend [![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/) [![Starlette](https://img.shields.io/badge/Starlette-0A0A0A.svg)](https://www.starlette.io/)
+- Computer Vision [![OpenCV](https://img.shields.io/badge/OpenCV-5C3EE8.svg?logo=opencv&logoColor=white)](https://opencv.org/) [![NumPy](https://img.shields.io/badge/NumPy-013243.svg?logo=numpy&logoColor=white)](https://numpy.org/)
+- Frontend [![Tailwind CSS](https://img.shields.io/badge/Tailwind-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/) [![Vue 3](https://img.shields.io/badge/Vue%203-42B883.svg?logo=vue.js&logoColor=white)](https://vuejs.org/) [![Font Awesome](https://img.shields.io/badge/Font%20Awesome-528DD7.svg?logo=fontawesome&logoColor=white)](https://fontawesome.com/) [![Hammer.js](https://img.shields.io/badge/Hammer.js-FF9800.svg)](https://hammerjs.github.io/)
+- Realtime [![WebSocket](https://img.shields.io/badge/WebSocket-1E90FF.svg)](#) [![Uvicorn](https://img.shields.io/badge/Uvicorn-121212.svg)](https://www.uvicorn.org/)
+
 ### Features
 - Real‑time color cloaking with background replacement
 - Color picker + eyedropper from video
