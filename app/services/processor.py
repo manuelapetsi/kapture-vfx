@@ -1,4 +1,5 @@
 import base64
+import binascii
 import cv2
 import numpy as np
 from typing import Optional, List, Tuple
@@ -60,15 +61,35 @@ class FrameProcessor:
 
 	@staticmethod
 	def decode_base64_image(data_uri: str) -> Optional[np.ndarray]:
+		if not data_uri or not isinstance(data_uri, str):
+			return None
+		
 		if "," in data_uri:
-			_, b64data = data_uri.split(",", 1)
+			header, b64data = data_uri.split(",", 1)
+			# Basic validation of data URI format
+			if not header.startswith("data:image/"):
+				return None
 		else:
 			b64data = data_uri
+			
 		try:
-			binary = base64.b64decode(b64data)
+			binary = base64.b64decode(b64data, validate=True)
+			# Check for reasonable image size limits (max 50MB decoded)
+			if len(binary) > 50 * 1024 * 1024:
+				return None
+			
 			np_arr = np.frombuffer(binary, np.uint8)
 			frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+			
+			# Additional validation: ensure decoded image is reasonable
+			if frame is not None:
+				h, w = frame.shape[:2]
+				if h > 4000 or w > 4000 or h < 10 or w < 10:
+					return None
+					
 			return frame
+		except (base64.binascii.Error, ValueError, cv2.error) as e:
+			return None
 		except Exception:
 			return None
 
