@@ -56,7 +56,7 @@ source venv/bin/activate
 python3 -m pip install -r requirements.txt
 ./run.sh
 ```
-Open `http://127.0.0.1:8000/`.
+Open `http://127.0.0.1:8000/` (or `http://127.0.0.1:<your-port>/` if you started the server on a different port).
 
 ### How to use
 1. Click Start and allow camera access.
