@@ -1,5 +1,13 @@
 ## kapture-vfx
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.x-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![OpenCV](https://img.shields.io/badge/OpenCV-4.x-5C3EE8.svg?logo=opencv&logoColor=white)](https://opencv.org/)
+[![Realtime](https://img.shields.io/badge/Realtime-WebSocket-1E90FF.svg)](#)
+[![UI](https://img.shields.io/badge/UI-Tailwind%20CSS%20%2B%20Vue-38B2AC.svg?logo=tailwind-css&logoColor=white)](#)
+[![GitHub stars](https://img.shields.io/github/stars/manuelapetsi/kapture-vfx?style=social)](https://github.com/manuelapetsi/kapture-vfx)
+
 Invisible cloak for your webcam. Pick a color, make it vanish. Powered by OpenCV (CV), FastAPI (backend), and a zero-build modern UI.
 
 ### Features
