@@ -51,7 +51,7 @@ kapture-vfx/
 
 ### Quick start
 ```bash
-cd /Users/scientific/i-apps/kapture-vfx
+cd kapture-vfx
 source venv/bin/activate
 python3 -m pip install -r requirements.txt
 ./run.sh
