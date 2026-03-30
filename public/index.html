@@ -1,237 +1,264 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>kapture-vfx</title>
-	<script src="https://cdn.tailwindcss.com"></script>
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-	<script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloak Studio — kapture-vfx</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+  <script src="/static/app.js" defer></script>
 </head>
-<body class="bg-slate-950 text-slate-100">
-	<div id="app" class="min-h-screen p-4">
-		<div class="mx-auto max-w-6xl space-y-4">
-			<header class="flex items-center justify-between">
-				<div class="flex items-center gap-3">
-					<span class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500/10 ring-1 ring-emerald-400/30 text-emerald-300 shadow-sm">
-						<i class="fa-solid fa-wand-sparkles"></i>
-					</span>
-					<h1 class="text-xl md:text-2xl font-bold tracking-tight">kapture-vfx</h1>
-				</div>
-				<div class="flex items-center gap-2 text-xs md:text-sm">
-					<div class="px-2 py-1 rounded bg-slate-800/60">Conn: <span :class="connected ? 'text-emerald-400' : 'text-rose-400'">{{ connected ? 'OK' : 'OFF' }}</span></div>
-					<div class="px-2 py-1 rounded bg-slate-800/60">FPS: <span>{{ fps }}</span></div>
-					<button @click="showHelp=true" class="px-2 py-1 rounded bg-slate-800/60 hover:bg-slate-800"><i class="fa-regular fa-circle-question"></i> Help</button>
-				</div>
-			</header>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-brand">
+        <div class="brand-mark" aria-hidden="true">K</div>
+        <div>
+          <h1 class="brand-name">Cloak Studio</h1>
+          <p class="brand-tag">kapture-vfx &mdash; precision color keying</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="stat-group">
+          <div class="stat">
+            <span class="stat-label">Connection</span>
+            <div class="stat-value">
+              <span class="conn-dot" id="connDot"></span>
+              <strong id="connStatus" data-status="off">Offline</strong>
+            </div>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat">
+            <span class="stat-label">FPS</span>
+            <strong id="fpsValue" class="stat-mono">0</strong>
+          </div>
+          <div class="stat-sep"></div>
+          <div class="stat">
+            <span class="stat-label">Session</span>
+            <strong id="sessionTimer" class="stat-mono">00:00</strong>
+          </div>
+        </div>
+        <button id="helpButton" class="btn btn-ghost btn-sq" type="button" aria-label="Workflow guide">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 6.75a1.5 1.5 0 112.12 1.37c-.39.22-.62.62-.62 1.06V10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="9" cy="12.38" r=".56" fill="currentColor"/></svg>
+        </button>
+      </div>
+    </header>
 
-			<div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 md:p-4">
-				<div class="flex flex-wrap items-center gap-3">
-					<div class="flex items-center gap-2 bg-slate-800 rounded-lg p-2">
-						<button @click="toggleStreaming" class="px-3 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 flex items-center gap-2">
-							<span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25 shadow-sm">
-								<i :class="streaming ? 'fa-solid fa-stop' : 'fa-solid fa-play' "></i>
-							</span>
-							<span class="hidden sm:inline">{{ streaming ? 'Stop' : 'Start' }}</span>
-						</button>
-						<button @click="resetBackground" class="px-3 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 flex items-center gap-2">
-							<span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25 shadow-sm">
-								<i class="fa-solid fa-broom"></i>
-							</span>
-							<span class="hidden sm:inline">Reset</span>
-						</button>
-						<button @click="startPick" class="px-3 py-2 rounded-md bg-amber-600 hover:bg-amber-500 flex items-center gap-2">
-							<span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25 shadow-sm">
-								<i class="fa-solid fa-eye-dropper"></i>
-							</span>
-							<span class="hidden sm:inline">Pick</span>
-						</button>
-						<label class="flex items-center gap-2 px-2">
-							<input type="checkbox" v-model="preview" @change="sendParams" class="accent-indigo-500">
-							<span class="text-sm">Preview mask</span>
-						</label>
-					</div>
+    <div class="toolbar">
+      <div class="toolbar-actions">
+        <button id="toggleStreamButton" class="btn btn-accent" data-state="idle" type="button">
+          <span class="btn-dot"></span>
+          Start Session
+        </button>
+        <button id="resetButton" class="btn btn-outline" type="button">Reset Background</button>
+        <button id="pickButton" class="btn btn-outline" type="button">Sample Color</button>
+      </div>
+      <p id="pickHint" class="toolbar-hint" hidden>Click or long-press the camera feed to lock the target hue.</p>
+    </div>
 
-					<div class="flex items-center gap-2 bg-slate-800 rounded-lg p-2">
-						<label class="text-sm opacity-80">Color</label>
-						<input type="color" v-model="hex" @change="applyColor" class="h-9 w-12 rounded border border-slate-700 bg-slate-900" />
-						<label class="text-sm opacity-80">Tol</label>
-						<input type="range" min="1" max="30" v-model.number="tolerance" @input="applyColor" class="w-24" />
-						<span class="text-sm tabular-nums w-8 text-center">{{ tolerance }}</span>
-					</div>
+    <div class="pipeline" aria-label="Studio pipeline">
+      <div class="pipe-step" data-step="1">
+        <span class="pipe-num">01</span>
+        <div class="pipe-body">
+          <strong>Start session</strong>
+          <span>Bring the live capture online</span>
+        </div>
+      </div>
+      <span class="pipe-line"></span>
+      <div class="pipe-step" data-step="2">
+        <span class="pipe-num">02</span>
+        <div class="pipe-body">
+          <strong>Sample cloak</strong>
+          <span>Lock the precise cloak hue</span>
+        </div>
+      </div>
+      <span class="pipe-line"></span>
+      <div class="pipe-step" data-step="3">
+        <span class="pipe-num">03</span>
+        <div class="pipe-body">
+          <strong>Refine mask</strong>
+          <span>Tune the matte edge before output</span>
+        </div>
+      </div>
+    </div>
 
-					<div class="flex items-center gap-2 bg-slate-800 rounded-lg p-2">
-						<label class="text-sm opacity-80">S</label>
-						<input type="range" min="0" max="255" v-model.number="sMin" @input="applyColor" class="w-24" />
-						<span class="text-sm tabular-nums w-10 text-center">{{ sMin }}</span>
-						<label class="text-sm opacity-80">V</label>
-						<input type="range" min="0" max="255" v-model.number="vMin" @input="applyColor" class="w-24" />
-						<span class="text-sm tabular-nums w-10 text-center">{{ vMin }}</span>
-					</div>
+    <div class="content">
+      <div class="main-col">
+        <div class="viewports">
+          <article class="vp-card">
+            <div class="vp-head">
+              <span class="vp-badge">INPUT</span>
+              <h2>Camera</h2>
+              <span class="vp-meta">Live capture feed</span>
+            </div>
+            <div class="vp-frame">
+              <video id="cameraVideo" autoplay playsinline muted></video>
+            </div>
+          </article>
+          <article class="vp-card">
+            <div class="vp-head">
+              <span class="vp-badge">OUTPUT</span>
+              <h2>Processed</h2>
+              <span class="vp-meta">Server-rendered result</span>
+            </div>
+            <div class="vp-frame">
+              <img id="processedImage" class="processed-frame" alt="Processed video feed" hidden />
+              <div id="emptyState" class="empty-state">
+                <svg class="empty-icon" width="48" height="48" viewBox="0 0 48 48" fill="none">
+                  <rect x="8" y="12" width="32" height="24" rx="3" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+                  <circle cx="24" cy="24" r="4" stroke="currentColor" stroke-width="1.5"/>
+                  <line x1="24" y1="17" x2="24" y2="19.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="24" y1="28.5" x2="24" y2="31" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="17" y1="24" x2="19.5" y2="24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <line x1="28.5" y1="24" x2="31" y2="24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <p class="empty-title">No output yet</p>
+                <p class="empty-desc">Select a target color to begin processing</p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
 
-					<div class="flex flex-wrap items-center gap-2 bg-slate-800 rounded-lg p-2">
-						<label class="text-sm opacity-80">Blur</label>
-						<input type="range" min="3" max="15" step="2" v-model.number="blur" @input="sendParams" class="w-24" />
-						<span class="text-sm tabular-nums w-10 text-center">{{ blur }}</span>
-						<label class="text-sm opacity-80">Morph</label>
-						<input type="range" min="1" max="5" v-model.number="morphIter" @input="sendParams" class="w-24" />
-						<span class="text-sm tabular-nums w-10 text-center">{{ morphIter }}</span>
-						<label class="flex items-center gap-2">
-							<input type="checkbox" v-model="keepLargest" @change="sendParams" class="accent-indigo-500">
-							<span class="text-sm">Keep largest</span>
-						</label>
-						<label class="flex items-center gap-2">
-							<input type="checkbox" v-model="skinProtect" @change="sendParams" class="accent-indigo-500">
-							<span class="text-sm">Skin protect</span>
-						</label>
-						<label class="text-sm opacity-80">Min area</label>
-						<input type="range" min="0" max="10" v-model.number="minAreaPct" @input="sendParams" class="w-24" />
-						<span class="text-sm tabular-nums w-12 text-center">{{ minAreaPct }}%</span>
-					</div>
-				</div>
-			</div>
+      <aside class="panel">
+        <section class="panel-section">
+          <div class="sec-head">
+            <span class="sec-badge">TARGET</span>
+            <h3>Color Selection</h3>
+            <p class="sec-desc">Choose the dominant hue that should disappear.</p>
+          </div>
+          <div class="controls">
+            <div class="ctrl compact">
+              <label for="hex">Selected color</label>
+              <div class="color-field">
+                <input id="hex" type="color" value="#ff0000" class="color-input" />
+                <span id="hexValue" class="mono-pill">#FF0000</span>
+              </div>
+            </div>
+            <div class="ctrl">
+              <div class="ctrl-head">
+                <label for="tolerance">Tolerance</label>
+                <span id="toleranceValue" class="mono-pill">18</span>
+              </div>
+              <input id="tolerance" type="range" min="1" max="30" value="18" />
+            </div>
+            <div class="ctrl">
+              <div class="ctrl-head">
+                <label for="sMin">S floor</label>
+                <span id="sMinValue" class="mono-pill">80</span>
+              </div>
+              <input id="sMin" type="range" min="0" max="255" value="80" />
+            </div>
+            <div class="ctrl">
+              <div class="ctrl-head">
+                <label for="vMin">V floor</label>
+                <span id="vMinValue" class="mono-pill">60</span>
+              </div>
+              <input id="vMin" type="range" min="0" max="255" value="60" />
+            </div>
+          </div>
+        </section>
 
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-				<div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-					<h2 class="font-semibold mb-2">Camera <span v-if="picking" class="ml-2 text-amber-300 text-xs align-middle">tap to pick…</span></h2>
-					<video ref="video" class="w-full rounded-lg bg-black" :class="{ 'cursor-crosshair ring-2 ring-amber-400': picking }" @click="onVideoClick" autoplay playsinline muted></video>
-				</div>
-				<div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
-					<h2 class="font-semibold mb-2">Processed</h2>
-					<div class="w-full rounded-lg bg-black min-h-40">
-						<img v-if="hasColor" :src="processed" class="w-full rounded-lg"/>
-						<div v-else class="w-full h-full py-12 text-center text-slate-400 text-sm">Select a target color to begin</div>
-					</div>
-				</div>
-			</div>
-		</div>
+        <section class="panel-section">
+          <div class="sec-head">
+            <span class="sec-badge">MASK</span>
+            <h3>Refinement</h3>
+            <p class="sec-desc">Tighten the edge, remove noise, preview the matte.</p>
+          </div>
+          <div class="controls">
+            <div class="ctrl">
+              <div class="ctrl-head">
+                <label for="blur">Blur</label>
+                <span id="blurValue" class="mono-pill">7</span>
+              </div>
+              <input id="blur" type="range" min="3" max="15" step="2" value="7" />
+            </div>
+            <div class="ctrl">
+              <div class="ctrl-head">
+                <label for="morphIter">Morph</label>
+                <span id="morphIterValue" class="mono-pill">2</span>
+              </div>
+              <input id="morphIter" type="range" min="1" max="5" value="2" />
+            </div>
+            <div class="ctrl">
+              <div class="ctrl-head">
+                <label for="minAreaPct">Min area</label>
+                <span id="minAreaPctValue" class="mono-pill">1%</span>
+              </div>
+              <input id="minAreaPct" type="range" min="0" max="10" value="1" />
+            </div>
+          </div>
+          <div class="toggle-group">
+            <label class="toggle-row" for="previewMask">
+              <div class="toggle-text">
+                <strong>Preview mask</strong>
+                <small>Review live matte before applying</small>
+              </div>
+              <span class="toggle-switch">
+                <input id="previewMask" type="checkbox" class="toggle-input" />
+                <span class="toggle-track"></span>
+              </span>
+            </label>
+            <label class="toggle-row" for="keepLargest">
+              <div class="toggle-text">
+                <strong>Keep largest</strong>
+                <small>Favor primary cloak region</small>
+              </div>
+              <span class="toggle-switch">
+                <input id="keepLargest" type="checkbox" class="toggle-input" checked />
+                <span class="toggle-track"></span>
+              </span>
+            </label>
+            <label class="toggle-row" for="skinProtect">
+              <div class="toggle-text">
+                <strong>Skin protect</strong>
+                <small>Reduce false positives on skin</small>
+              </div>
+              <span class="toggle-switch">
+                <input id="skinProtect" type="checkbox" class="toggle-input" checked />
+                <span class="toggle-track"></span>
+              </span>
+            </label>
+          </div>
+        </section>
 
-		<!-- Help modal -->
-		<div v-if="showHelp" class="fixed inset-0 bg-black/60 grid place-items-center p-4">
-			<div class="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
-				<div class="flex items-center justify-between">
-					<h3 class="font-semibold"><i class="fa-regular fa-circle-question"></i> How to use</h3>
-					<button @click="showHelp=false" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
-				</div>
-				<ol class="list-decimal pl-5 space-y-2 text-sm text-slate-300">
-					<li>Click Start and allow camera access.</li>
-					<li>Click Reset to capture a clean background with no target color visible.</li>
-					<li>Pick a color from video or choose one, adjust tolerance and S/V if needed.</li>
-					<li>Toggle Preview mask to see detected pixels; tune sliders until the green overlay matches your target color only.</li>
-				</ol>
-				<div class="text-xs text-slate-400">Tip: Use even lighting and non-reflective materials for best results.</div>
-			</div>
-		</div>
+        <section class="panel-section panel-tips">
+          <div class="sec-head">
+            <span class="sec-badge">TIPS</span>
+            <h3>Operating Notes</h3>
+          </div>
+          <ul class="tips-list">
+            <li>Capture background after the frame is stable and cloak is out of view.</li>
+            <li>Use matte fabric and consistent light for a crisp mask.</li>
+            <li>Re-sample color after major scene or camera changes.</li>
+          </ul>
+        </section>
+      </aside>
+    </div>
+  </div>
 
-		<!-- Toasts -->
-		<div class="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
-			<div class="space-y-2 w-full max-w-md px-4">
-				<div v-for="t in toasts" :key="t.id" class="pointer-events-auto bg-slate-900 border border-slate-800 text-slate-100 px-3 py-2 rounded-lg shadow-lg flex items-center gap-2">
-					<span class="inline-flex h-6 w-6 items-center justify-center rounded-md bg-emerald-500/10 ring-1 ring-emerald-400/30 text-emerald-300">
-						<i class="fa-solid fa-circle-check"></i>
-					</span>
-					<span class="text-sm">{{ t.message }}</span>
-				</div>
-			</div>
-		</div>
-	</div>
+  <div id="helpModal" class="modal-overlay" hidden>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="modal-top">
+        <div>
+          <span class="sec-badge">GUIDE</span>
+          <h3 id="helpTitle">Studio Workflow</h3>
+          <p class="sec-desc">A short operating sequence for repeatable results.</p>
+        </div>
+        <button id="closeHelpButton" class="btn btn-ghost btn-sq" type="button" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4.5 4.5l9 9M13.5 4.5l-9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <ol class="guide-list">
+        <li>Start the session and allow the browser to access your camera.</li>
+        <li>Clear the scene, then reset the background once the frame is clean.</li>
+        <li>Sample the cloak color directly from the live feed or set it manually.</li>
+        <li>Adjust the mask controls until the preview isolates only the cloak region.</li>
+        <li>Disable preview to return to the final invisibility render.</li>
+      </ol>
+      <p class="guide-footer">Keep the subject separated from similarly colored objects for the cleanest result.</p>
+    </section>
+  </div>
 
-	<script>
-	const { createApp, ref, onMounted } = Vue
-	createApp({
-		setup() {
-			const video = ref(null)
-			const processed = ref('')
-			let ws = null
-			const streaming = ref(false)
-			const connected = ref(false)
-			const fps = ref(0)
-			let lastFrameAt = 0
-			let animationId = null
-			const hex = ref('#ff0000')
-			const tolerance = ref(18)
-			const sMin = ref(80)
-			const vMin = ref(60)
-			const picking = ref(false)
-			const preview = ref(false)
-			const blur = ref(7)
-			const morphIter = ref(2)
-			const keepLargest = ref(true)
-			const skinProtect = ref(true)
-			const minAreaPct = ref(1)
-			const showHelp = ref(false)
-			const toasts = ref([])
-			let nextToastId = 1
-			const hasColor = ref(false)
-			const recentToast = new Map()
-			let toastTimerId = null
-
-			function pushToast(message, key = null, ttlMs = 1200) {
-				const now = Date.now()
-				if (key) {
-					const last = recentToast.get(key)
-					if (last && now - last < ttlMs) return
-					recentToast.set(key, now)
-				}
-				// Only show one toast at a time
-				toasts.value = []
-				if (toastTimerId) clearTimeout(toastTimerId)
-				const id = nextToastId++
-				toasts.value.push({ id, message })
-				toastTimerId = setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id) }, 2000)
-			}
-
-			function connect() {
-				ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws')
-				ws.onopen = () => { connected.value = true; applyColor(); sendParams(); }
-				ws.onmessage = (evt) => {
-					const now = performance.now()
-					if (lastFrameAt) { fps.value = Math.round(1000 / (now - lastFrameAt)) }
-					lastFrameAt = now
-					const msg = JSON.parse(evt.data)
-					if (msg.type === 'frame') { if (hasColor.value) processed.value = msg.data }
-					if (msg.type === 'toast' && msg.message) {
-						pushToast(msg.message)
-						if (msg.message.startsWith('Target color set')) hasColor.value = true
-					}
-				}
-				ws.onclose = () => { connected.value = false; ws = null }
-			}
-
-			async function startCamera() {
-				const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-				video.value.srcObject = stream
-			}
-
-			function captureAndSend() {
-				if (!ws || ws.readyState !== 1) return
-				const cv = document.createElement('canvas')
-				cv.width = video.value.videoWidth
-				cv.height = video.value.videoHeight
-				const ctx = cv.getContext('2d')
-				ctx.drawImage(video.value, 0, 0, cv.width, cv.height)
-				const data = cv.toDataURL('image/jpeg', 0.6)
-				ws.send(JSON.stringify({ type: 'frame', data }))
-				animationId = requestAnimationFrame(captureAndSend)
-			}
-
-			function stopStreaming() { if (animationId) cancelAnimationFrame(animationId); animationId = null; streaming.value = false; pushToast('Streaming stopped', 'startstop') }
-			function toggleStreaming() { if (!streaming.value) { connect(); setTimeout(() => { streaming.value = true; captureAndSend(); pushToast('Streaming started', 'startstop') }, 300) } else { stopStreaming(); if (ws) ws.close() } }
-			function resetBackground() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'reset_background' })) }
-			function applyColor() { if (ws && ws.readyState === 1) { ws.send(JSON.stringify({ type: 'set_color', hex: hex.value, tolerance: tolerance.value, s_min: sMin.value, v_min: vMin.value })); hasColor.value = true } }
-			function sendParams() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'set_params', blur_ksize: blur.value, morph_iterations: morphIter.value, preview_mask: preview.value, keep_largest: keepLargest.value, skin_protect: skinProtect.value, min_area_ratio: minAreaPct.value / 100 })) }
-
-			function startPick() { picking.value = true; pushToast('Tap the video to pick a color', 'pick') }
-			function rgbToHex(r, g, b) { return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('') }
-			function sampleAtClientPoint(clientX, clientY, size = 11) { if (!video.value || !video.value.videoWidth) return null; const cv = document.createElement('canvas'); cv.width = video.value.videoWidth; cv.height = video.value.videoHeight; const ctx = cv.getContext('2d'); ctx.drawImage(video.value, 0, 0, cv.width, cv.height); const rect = video.value.getBoundingClientRect(); const x = Math.round((clientX - rect.left) * cv.width / rect.width); const y = Math.round((clientY - rect.top) * cv.height / rect.height); const half = Math.max(1, Math.floor(size / 2)); const sx = Math.max(0, x - half); const sy = Math.max(0, y - half); const sw = Math.min(cv.width - sx, half * 2 + 1); const sh = Math.min(cv.height - sy, half * 2 + 1); const img = ctx.getImageData(sx, sy, sw, sh); let rSum=0,gSum=0,bSum=0,count=0; for (let i=0;i<img.data.length;i+=4){rSum+=img.data[i];gSum+=img.data[i+1];bSum+=img.data[i+2];count++} const r=Math.round(rSum/count), g=Math.round(gSum/count), b=Math.round(bSum/count); return rgbToHex(r,g,b) }
-			function onVideoClick(e) { if (!picking.value) return; const color = sampleAtClientPoint(e.clientX, e.clientY, 11); if (color) { hex.value = color; applyColor(); pushToast('Color picked', 'pick') } picking.value = false }
-
-			onMounted(async () => { await startCamera(); const hammer = new Hammer(document.body); hammer.on('doubletap', resetBackground); const hv = new Hammer(video.value); try { hv.get('press').set({ time: 300 }) } catch (e) {} hv.on('press', (ev) => { const color = sampleAtClientPoint(ev.center.x, ev.center.y, 11); if (color) { hex.value = color; applyColor(); pushToast('Color picked', 'pick') } picking.value = false }) })
-
-			return { video, processed, toggleStreaming, resetBackground, streaming, connected, fps, hex, tolerance, sMin, vMin, applyColor, picking, startPick, onVideoClick, preview, blur, morphIter, sendParams, showHelp, keepLargest, skinProtect, minAreaPct, toasts, hasColor }
-		}
-	}).mount('#app')
-	</script>
+  <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>
