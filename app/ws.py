@@ -1,135 +1,192 @@
-from fastapi import WebSocket, WebSocketDisconnect
-from .services.processor import FrameProcessor
+import json
+import os
 import re
 import time
-from typing import Dict
+from collections import deque
+from typing import Any, Deque, Optional
 
-processor = FrameProcessor()
+from fastapi import WebSocket, WebSocketDisconnect
 
-# Rate limiting per connection
-connection_limits: Dict[str, Dict[str, float]] = {}
+from .security import get_allowed_origins, is_allowed_websocket_origin
+from .services.processor import FrameProcessor
+
+
+HEX_COLOR_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")
+ALLOWED_WS_ORIGINS = set(get_allowed_origins())
+
+
+def _get_int_env(name: str, default: int, minimum: int, maximum: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+    except ValueError:
+        value = default
+    return max(minimum, min(maximum, value))
+
+
+MAX_REQUESTS_PER_SECOND = _get_int_env("MAX_REQUESTS_PER_SECOND", 20, 1, 60)
+MAX_WS_MESSAGE_BYTES = _get_int_env("MAX_WS_MESSAGE_BYTES", 4_000_000, 4_096, 20_000_000)
+MAX_FRAME_DATA_CHARS = max(1_024, MAX_WS_MESSAGE_BYTES - 1_024)
+
+
+class ConnectionRateLimiter:
+    def __init__(self, max_requests: int = MAX_REQUESTS_PER_SECOND, window_seconds: float = 1.0):
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+        self.events: Deque[float] = deque()
+
+    def allow(self) -> bool:
+        now = time.monotonic()
+        while self.events and now - self.events[0] >= self.window_seconds:
+            self.events.popleft()
+
+        if len(self.events) >= self.max_requests:
+            return False
+
+        self.events.append(now)
+        return True
 
 def validate_hex_color(hex_color: str) -> bool:
-	"""Validate hex color format"""
-	pattern = r'^#[0-9A-Fa-f]{6}$'
-	return bool(re.match(pattern, hex_color))
+    return bool(HEX_COLOR_PATTERN.match(hex_color))
 
-def validate_numeric_param(value, min_val: float, max_val: float, default: float) -> float:
-	"""Safely convert and validate numeric parameters"""
-	if value is None:
-		return default
-	try:
-		num = float(value)
-		return max(min_val, min(max_val, num))
-	except (ValueError, TypeError):
-		return default
 
-def check_rate_limit(client_id: str, max_requests: int = 30, window: int = 1) -> bool:
-	"""Simple rate limiting check"""
-	now = time.time()
-	if client_id not in connection_limits:
-		connection_limits[client_id] = {"count": 0, "window_start": now}
-	
-	limit_data = connection_limits[client_id]
-	
-	if now - limit_data["window_start"] > window:
-		limit_data["count"] = 0
-		limit_data["window_start"] = now
-	
-	if limit_data["count"] >= max_requests:
-		return False
-	
-	limit_data["count"] += 1
-	return True
+def validate_numeric_param(
+    value: Any,
+    min_val: float,
+    max_val: float,
+    default: Optional[float],
+) -> Optional[float]:
+    if value is None:
+        return default
+    try:
+        num = float(value)
+        return max(min_val, min(max_val, num))
+    except (ValueError, TypeError):
+        return default
+
+
+def validate_bool_param(value: Any, default: Optional[bool] = None) -> Optional[bool]:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+    return default
+
 
 async def handle_ws(websocket: WebSocket):
-	await websocket.accept()
-	client_id = f"{websocket.client.host}:{websocket.client.port}"
-	
-	try:
-		while True:
-			message = await websocket.receive_json()
-			
-			# Rate limiting check
-			if not check_rate_limit(client_id):
-				await websocket.send_json({"type": "error", "message": "rate_limit_exceeded"})
-				continue
-			
-			kind = message.get("type")
-			
-			if kind == "frame":
-				img_data = message.get("data")
-				if not img_data or not isinstance(img_data, str):
-					await websocket.send_json({"type": "error", "message": "invalid_frame_data"})
-					continue
-				
-				# Check base64 data size (roughly 10MB limit)
-				if len(img_data) > 14000000:
-					await websocket.send_json({"type": "error", "message": "frame_too_large"})
-					continue
-				
-				frame = FrameProcessor.decode_base64_image(img_data)
-				if frame is None:
-					await websocket.send_json({"type": "error", "message": "bad_frame"})
-					continue
-					
-				processed = processor.process_frame(frame)
-				if processor.pop_just_captured():
-					await websocket.send_json({"type": "toast", "message": "Background captured"})
-				out_data = FrameProcessor.encode_base64_image(processed)
-				await websocket.send_json({"type": "frame", "data": out_data})
-				
-			elif kind == "reset_background":
-				processor.background_ready = False
-				await websocket.send_json({"type": "toast", "message": "Background cleared"})
-				await websocket.send_json({"type": "ok"})
-				
-			elif kind == "set_color":
-				hex_color = message.get("hex", "#ff0000")
-				if not validate_hex_color(hex_color):
-					await websocket.send_json({"type": "error", "message": "invalid_hex_color"})
-					continue
-				
-				tol = int(validate_numeric_param(message.get("tolerance"), 1, 90, 10))
-				s_min = int(validate_numeric_param(message.get("s_min"), 0, 255, 120))
-				v_min = int(validate_numeric_param(message.get("v_min"), 0, 255, 70))
-				
-				processor.set_color_hex(hex_color, tolerance_h=tol, s_min=s_min, v_min=v_min)
-				await websocket.send_json({"type": "ok"})
-				
-			elif kind == "set_params":
-				# Validate all parameters with safe bounds
-				blur_ksize = validate_numeric_param(message.get("blur_ksize"), 3, 15, None)
-				morph_iterations = validate_numeric_param(message.get("morph_iterations"), 1, 10, None)
-				morph_kernel_size = validate_numeric_param(message.get("morph_kernel_size"), 3, 15, None)
-				min_area_ratio = validate_numeric_param(message.get("min_area_ratio"), 0.0, 1.0, None)
-				
-				# Ensure odd values for kernel sizes
-				if blur_ksize is not None and int(blur_ksize) % 2 == 0:
-					blur_ksize = int(blur_ksize) + 1
-				if morph_kernel_size is not None and int(morph_kernel_size) % 2 == 0:
-					morph_kernel_size = int(morph_kernel_size) + 1
-				
-				processor.set_params(
-					blur_ksize=int(blur_ksize) if blur_ksize is not None else None,
-					morph_iterations=int(morph_iterations) if morph_iterations is not None else None,
-					morph_kernel_size=int(morph_kernel_size) if morph_kernel_size is not None else None,
-					preview_mask=message.get("preview_mask"),
-					keep_largest=message.get("keep_largest"),
-					min_area_ratio=min_area_ratio,
-					skin_protect=message.get("skin_protect"),
-				)
-				await websocket.send_json({"type": "ok"})
-			else:
-				await websocket.send_json({"type": "error", "message": "unknown_message_type"})
-				
-	except WebSocketDisconnect:
-		# Clean up rate limiting data
-		if client_id in connection_limits:
-			del connection_limits[client_id]
-		return
-	except Exception as e:
-		await websocket.send_json({"type": "error", "message": "internal_error"})
-		if client_id in connection_limits:
-			del connection_limits[client_id]
-		return
+    if not is_allowed_websocket_origin(
+        origin=websocket.headers.get("origin"),
+        host=websocket.headers.get("host"),
+        allowed_origins=ALLOWED_WS_ORIGINS,
+    ):
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
+    processor = FrameProcessor()
+    rate_limiter = ConnectionRateLimiter()
+
+    try:
+        while True:
+            raw_message = await websocket.receive_text()
+            if len(raw_message) > MAX_WS_MESSAGE_BYTES:
+                await websocket.send_json({"type": "error", "message": "message_too_large"})
+                continue
+
+            try:
+                message = json.loads(raw_message)
+            except json.JSONDecodeError:
+                await websocket.send_json({"type": "error", "message": "invalid_json"})
+                continue
+
+            if not isinstance(message, dict):
+                await websocket.send_json({"type": "error", "message": "invalid_message"})
+                continue
+
+            kind = message.get("type")
+            if not isinstance(kind, str):
+                await websocket.send_json({"type": "error", "message": "unknown_message_type"})
+                continue
+
+            if kind == "frame":
+                if not rate_limiter.allow():
+                    await websocket.send_json({"type": "error", "message": "rate_limit_exceeded"})
+                    continue
+
+                img_data = message.get("data")
+                if not img_data or not isinstance(img_data, str):
+                    await websocket.send_json({"type": "error", "message": "invalid_frame_data"})
+                    continue
+
+                if len(img_data) > MAX_FRAME_DATA_CHARS:
+                    await websocket.send_json({"type": "error", "message": "frame_too_large"})
+                    continue
+
+                frame = FrameProcessor.decode_base64_image(img_data)
+                if frame is None:
+                    await websocket.send_json({"type": "error", "message": "bad_frame"})
+                    continue
+
+                processed = processor.process_frame(frame)
+                if processor.pop_just_captured():
+                    await websocket.send_json({"type": "toast", "message": "Background captured"})
+                out_data = FrameProcessor.encode_base64_image(processed)
+                await websocket.send_json({"type": "frame", "data": out_data})
+
+            elif kind == "reset_background":
+                processor.clear_background()
+                await websocket.send_json({"type": "toast", "message": "Background cleared"})
+                await websocket.send_json({"type": "ok"})
+
+            elif kind == "set_color":
+                hex_color = message.get("hex", "#ff0000")
+                if not isinstance(hex_color, str) or not validate_hex_color(hex_color):
+                    await websocket.send_json({"type": "error", "message": "invalid_hex_color"})
+                    continue
+
+                tol = int(validate_numeric_param(message.get("tolerance"), 1, 90, 10))
+                s_min = int(validate_numeric_param(message.get("s_min"), 0, 255, 120))
+                v_min = int(validate_numeric_param(message.get("v_min"), 0, 255, 70))
+
+                processor.set_color_hex(hex_color, tolerance_h=tol, s_min=s_min, v_min=v_min)
+                await websocket.send_json({"type": "toast", "message": "Target color updated"})
+                await websocket.send_json({"type": "ok"})
+
+            elif kind == "set_params":
+                blur_ksize = validate_numeric_param(message.get("blur_ksize"), 3, 15, None)
+                morph_iterations = validate_numeric_param(message.get("morph_iterations"), 1, 10, None)
+                morph_kernel_size = validate_numeric_param(message.get("morph_kernel_size"), 3, 15, None)
+                min_area_ratio = validate_numeric_param(message.get("min_area_ratio"), 0.0, 1.0, None)
+
+                if blur_ksize is not None and int(blur_ksize) % 2 == 0:
+                    blur_ksize = int(blur_ksize) + 1
+                if morph_kernel_size is not None and int(morph_kernel_size) % 2 == 0:
+                    morph_kernel_size = int(morph_kernel_size) + 1
+
+                processor.set_params(
+                    blur_ksize=int(blur_ksize) if blur_ksize is not None else None,
+                    morph_iterations=int(morph_iterations) if morph_iterations is not None else None,
+                    morph_kernel_size=int(morph_kernel_size) if morph_kernel_size is not None else None,
+                    preview_mask=validate_bool_param(message.get("preview_mask")),
+                    keep_largest=validate_bool_param(message.get("keep_largest")),
+                    min_area_ratio=min_area_ratio,
+                    skin_protect=validate_bool_param(message.get("skin_protect")),
+                )
+                await websocket.send_json({"type": "ok"})
+            else:
+                await websocket.send_json({"type": "error", "message": "unknown_message_type"})
+
+    except WebSocketDisconnect:
+        return
+    except Exception:
+        try:
+            await websocket.send_json({"type": "error", "message": "internal_error"})
+        except Exception:
+            pass
+        try:
+            await websocket.close(code=1011)
+        except Exception:
+            pass
