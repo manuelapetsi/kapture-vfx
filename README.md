@@ -5,10 +5,12 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.x-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.x-5C3EE8.svg?logo=opencv&logoColor=white)](https://opencv.org/)
 [![Realtime](https://img.shields.io/badge/Realtime-WebSocket-1E90FF.svg)](#)
-[![UI](https://img.shields.io/badge/UI-Tailwind%20CSS%20%2B%20Vue-38B2AC.svg?logo=tailwind-css&logoColor=white)](#)
+[![UI](https://img.shields.io/badge/UI-Zero%20Build-38B2AC.svg)](#)
 [![GitHub stars](https://img.shields.io/github/stars/manuelapetsi/kapture-vfx?style=social)](https://github.com/manuelapetsi/kapture-vfx)
 
 Invisible cloak for your webcam. Pick a color, make it vanish. Powered by OpenCV (CV), FastAPI (backend), and a zero-build modern UI.
+
+![Cloak Studio Preview](public/preview.png)
 
 ### Project structure
 ```text
@@ -24,7 +26,9 @@ kapture-vfx/
 │     ├─ __init__.py
 │     └─ processor.py         # Base64 encode/decode, color + params
 ├─ public/
-│  └─ index.html              # Tailwind + Vue UI (CDN)
+│  ├─ index.html              # App shell
+│  ├─ styles.css              # Dark studio theme
+│  └─ app.js                  # Client logic + WebSocket
 ├─ run.sh                     # Dev server launcher
 ├─ requirements.txt
 ├─ README.md
@@ -34,7 +38,7 @@ kapture-vfx/
 ### Tech stack
 - Backend [![FastAPI](https://img.shields.io/badge/FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/) [![Starlette](https://img.shields.io/badge/Starlette-0A0A0A.svg)](https://www.starlette.io/)
 - Computer Vision [![OpenCV](https://img.shields.io/badge/OpenCV-5C3EE8.svg?logo=opencv&logoColor=white)](https://opencv.org/) [![NumPy](https://img.shields.io/badge/NumPy-013243.svg?logo=numpy&logoColor=white)](https://numpy.org/)
-- Frontend [![Tailwind CSS](https://img.shields.io/badge/Tailwind-38B2AC.svg?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/) [![Vue 3](https://img.shields.io/badge/Vue%203-42B883.svg?logo=vue.js&logoColor=white)](https://vuejs.org/) [![Font Awesome](https://img.shields.io/badge/Font%20Awesome-528DD7.svg?logo=fontawesome&logoColor=white)](https://fontawesome.com/) [![Hammer.js](https://img.shields.io/badge/Hammer.js-FF9800.svg)](https://hammerjs.github.io/)
+- Frontend [![Vanilla JS](https://img.shields.io/badge/Vanilla%20JS-F7DF1E.svg?logo=javascript&logoColor=black)](#) [![CSS](https://img.shields.io/badge/CSS-1572B6.svg?logo=css3&logoColor=white)](#) (zero-build, no frameworks)
 - Realtime [![WebSocket](https://img.shields.io/badge/WebSocket-1E90FF.svg)](#) [![Uvicorn](https://img.shields.io/badge/Uvicorn-121212.svg)](https://www.uvicorn.org/)
 
 ### Features
